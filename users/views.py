@@ -100,7 +100,7 @@ class SmsCodeCreateView(FormView):
 
         try:
             sms_code = generate_sms_code()
-            print('Смс отправлена-заменить на функцию')
+            print(f'Смс отправлена-заменить на функцию {sms_code}')
             # send_sms_code(phone_number, sms_code)
             auth_code, create = AuthCode.objects.get_or_create(phone_number=phone_number)
             auth_code.sms_code = sms_code
