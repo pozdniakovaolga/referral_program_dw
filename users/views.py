@@ -2,33 +2,36 @@ from django.contrib.auth import login
 from django.shortcuts import render
 from django.urls import reverse_lazy
 from django.utils import timezone
-from rest_framework import status, generics
+from django.views.generic import DetailView, FormView, UpdateView
+
+from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django.views.generic import DetailView, UpdateView, FormView
+
 from rest_framework_simplejwt.tokens import AccessToken
+
 from twilio.base.exceptions import TwilioRestException
 
-from users.models import User, AuthCode
-from .forms import ProfileForm, ProfileUpdateForm, PhoneSmsForm
-from .serializers import ProfileSerializer, PhoneSmsSerializer
+from users.models import AuthCode, User
 
-from .services import generate_sms_code, send_sms_code, generate_referral_code
+from .forms import PhoneSmsForm, ProfileForm, ProfileUpdateForm
+from .serializers import PhoneSmsSerializer, ProfileSerializer
+from .services import generate_referral_code, generate_sms_code, send_sms_code
 
 
 class SmsCodeCreateAPIView(APIView):
-    """ Контроллер для авторизации: отправка смс кода """
+    """Контроллер для авторизации: отправка смс кода."""
 
     @staticmethod
     def post(request):
+        """Метод обрабатывает POST запрос для отправки смс кода."""
         phone_number = request.data.get('phone_number')
         serializer = PhoneSmsSerializer(data={'phone_number': phone_number})
         if serializer.is_valid():
             try:
                 sms_code = generate_sms_code()
-                print('Смс отправлена-заменить на функцию')
-                # send_sms_code(phone_number, sms_code)
+                send_sms_code(phone_number, sms_code)
                 auth_code, created = AuthCode.objects.get_or_create(phone_number=phone_number)
                 auth_code.sms_code = sms_code
                 auth_code.sms_code_sent_at = timezone.now()
@@ -41,10 +44,11 @@ class SmsCodeCreateAPIView(APIView):
 
 
 class SmsCodeVerifyAPIView(APIView):
-    """ Контроллер для авторизации: проверка смс кода """
+    """Контроллер для авторизации: проверка смс кода."""
 
     @staticmethod
     def post(request):
+        """Метод обрабатывает POST запрос для проверки смс кода."""
         phone_number = request.data.get('phone_number')
         sms_code = request.data.get('sms_code')
         serializer = PhoneSmsSerializer(data={'phone_number': phone_number, 'sms_code': sms_code})
@@ -70,38 +74,41 @@ class SmsCodeVerifyAPIView(APIView):
 
 
 class ProfileRetrieveAPIView(generics.RetrieveAPIView):
-    """ Контроллер, который позволяет пользователям просматривать свой собственный профиль """
+    """Контроллер, который позволяет пользователям просматривать свой собственный профиль."""
+
     serializer_class = ProfileSerializer
     permission_classes = [IsAuthenticated]
 
     def get_object(self):
-        """ Метод возвращает экземпляр пользователя, который в данный момент авторизован """
+        """Метод возвращает экземпляр пользователя, который в данный момент авторизован."""
         return self.request.user
 
 
 class ProfileUpdateAPIView(generics.UpdateAPIView):
-    """ Контроллер, который позволяет пользователям обновлять свой собственный профиль """
+    """Контроллер, который позволяет пользователям обновлять свой собственный профиль."""
+
     serializer_class = ProfileSerializer
     permission_classes = [IsAuthenticated]
 
     def get_object(self):
-        """ Метод возвращает экземпляр пользователя, который в данный момент авторизован """
+        """Метод возвращает экземпляр пользователя, который в данный момент авторизован."""
         return self.request.user
 
 
 class SmsCodeCreateView(FormView):
-    """ Контроллер веб-теста для авторизации: отправка смс кода """
+    """Контроллер веб-теста для авторизации: отправка смс кода."""
+
     form_class = PhoneSmsForm
     template_name = 'users/auth_send_sms.html'
     success_url = reverse_lazy('users:web_auth_verify_sms')
 
     def form_valid(self, form):
+        """Метод обрабатывает валидную форму для отправки смс кода."""
         phone_number = form.cleaned_data['phone_number']
 
         try:
             sms_code = generate_sms_code()
-            print(f'Смс отправлена-заменить на функцию {sms_code}')
-            # send_sms_code(phone_number, sms_code)
+            send_sms_code(phone_number, sms_code)
             auth_code, create = AuthCode.objects.get_or_create(phone_number=phone_number)
             auth_code.sms_code = sms_code
             auth_code.sms_code_sent_at = timezone.now()
@@ -113,12 +120,14 @@ class SmsCodeCreateView(FormView):
 
 
 class SmsCodeVerifyView(FormView):
-    """ Контроллер веб-теста для авторизации: проверка смс кода """
+    """Контроллер веб-теста для авторизации: проверка смс кода."""
+
     form_class = PhoneSmsForm
     template_name = 'users/auth_verify_sms.html'
     success_url = reverse_lazy('users:web_profile_get')
 
     def form_valid(self, form):
+        """Метод обрабатывает валидную форму для проверки смс кода."""
         phone_number = form.cleaned_data['phone_number']
         sms_code = form.cleaned_data['sms_code']
         try:
@@ -139,17 +148,18 @@ class SmsCodeVerifyView(FormView):
 
 
 class ProfileDetailView(DetailView):
-    """ Контроллер веб-теста, который позволяет пользователям просматривать свой собственный профиль """
+    """Контроллер веб-теста, который позволяет пользователям просматривать свой собственный профиль."""
+
     model = User
     form_class = ProfileForm
     template_name = 'users/user_detail.html'
 
     def get_object(self, *args, **kwargs):
-        """ Метод возвращает экземпляр пользователя, который в данный момент авторизован """
+        """Метод возвращает экземпляр пользователя, который в данный момент авторизован."""
         return self.request.user
 
     def get_context_data(self, **kwargs):
-        """ Метод получения списка номеров телефонов рефералов """
+        """Метод получения списка номеров телефонов рефералов."""
         context_data = super().get_context_data(**kwargs)
         referrals = User.objects.filter(inviter_referral_code=self.request.user.my_referral_code)
         context_data['referrals'] = [referral.phone_number for referral in referrals]  # только номера телефонов
@@ -157,12 +167,13 @@ class ProfileDetailView(DetailView):
 
 
 class ProfileUpdateView(UpdateView):
-    """ Контроллер веб-теста, который позволяет пользователям изменять свой собственный профиль """
+    """Контроллер веб-теста, который позволяет пользователям изменять свой собственный профиль."""
+
     model = User
     form_class = ProfileUpdateForm
     template_name = 'users/user_form.html'
     success_url = reverse_lazy('users:web_profile_get')
 
     def get_object(self, *args, **kwargs):
-        """ Метод возвращает экземпляр пользователя, который в данный момент авторизован """
+        """Метод возвращает экземпляр пользователя, который в данный момент авторизован."""
         return self.request.user

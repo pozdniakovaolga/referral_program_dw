@@ -1,6 +1,8 @@
 from django.urls import path
-from .views import SmsCodeCreateAPIView, SmsCodeVerifyAPIView, ProfileRetrieveAPIView, ProfileUpdateAPIView, \
-    SmsCodeCreateView, SmsCodeVerifyView, ProfileDetailView, ProfileUpdateView
+
+from .views import ProfileDetailView, ProfileRetrieveAPIView, ProfileUpdateAPIView, ProfileUpdateView, \
+    SmsCodeCreateAPIView, SmsCodeCreateView, SmsCodeVerifyAPIView, SmsCodeVerifyView
+
 
 urlpatterns = [
     path('auth/send_sms/', SmsCodeCreateAPIView.as_view(), name='auth_send_sms'),

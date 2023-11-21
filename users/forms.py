@@ -1,16 +1,19 @@
+import re
+
+from django import forms
+
 from rest_framework.generics import get_object_or_404
 
 from users.models import User
-from django import forms
-import re
 
 
 class SendSmsForm(forms.Form):
-    """ Форма для авторизации: отправка смс кода """
+    """Форма для авторизации: отправка смс кода."""
+
     phone_number = forms.CharField(max_length=15)
 
     def clean_phone_number(self):
-        """ Метод валидации номера телефона """
+        """Метод валидации номера телефона."""
         cleaned_data = self.cleaned_data['phone_number']
         pattern = r'\+7\d{10}$'
         if not re.match(pattern, cleaned_data):
@@ -19,12 +22,13 @@ class SendSmsForm(forms.Form):
 
 
 class PhoneSmsForm(forms.Form):
-    """ Форма для авторизации: проверка смс кода """
+    """Форма для авторизации: проверка смс кода."""
+
     phone_number = forms.CharField(max_length=12)
     sms_code = forms.IntegerField(required=False)
 
     def clean_phone_number(self):
-        """ Метод валидации номера телефона """
+        """Метод валидации номера телефона."""
         cleaned_data = self.cleaned_data['phone_number']
         pattern = r'\+7\d{10}$'
         if not re.match(pattern, cleaned_data):
@@ -32,7 +36,7 @@ class PhoneSmsForm(forms.Form):
         return cleaned_data
 
     def clean_sms_code(self):
-        """ Метод валидации смс кода """
+        """Метод валидации смс кода."""
         cleaned_data = str(self.cleaned_data['sms_code'])
         if len(cleaned_data) != 4:
             raise forms.ValidationError("Код должен состоять из 4 цифр")
@@ -40,7 +44,7 @@ class PhoneSmsForm(forms.Form):
 
 
 class ProfileForm(forms.ModelForm):
-    """ Форма профиля пользователя """
+    """Форма профиля пользователя."""
 
     class Meta:
         model = User
@@ -49,10 +53,10 @@ class ProfileForm(forms.ModelForm):
 
 
 class ProfileUpdateForm(forms.ModelForm):
-    """ Форма обновления профиля пользователя """
+    """Форма обновления профиля пользователя."""
 
     def clean_inviter_referral_code(self):
-        """ Метод валидации реферального кода пригласителя """
+        """Метод валидации реферального кода пригласителя."""
         cleaned_data = self.cleaned_data['inviter_referral_code']
 
         if cleaned_data is not None:
@@ -72,7 +76,7 @@ class ProfileUpdateForm(forms.ModelForm):
         return cleaned_data
 
     def save(self, commit=True):
-        """ Метод начисления реферальных баллов """
+        """Метод начисления реферальных баллов."""
         inviter_referral_code_before_update = User.objects.get(id=self.instance.id).inviter_referral_code
         instance = super().save(commit=False)
         cleaned_data = self.cleaned_data['inviter_referral_code']

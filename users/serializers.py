@@ -1,20 +1,21 @@
+import re
+
 from rest_framework import serializers
 from rest_framework.generics import get_object_or_404
-
-from users.models import User
 from rest_framework.serializers import ValidationError
 
-import re
+from users.models import User
 
 
 class PhoneSmsSerializer(serializers.Serializer):
-    """ Сериализатор для номера телефона и смс кода """
+    """Сериализатор для номера телефона и смс кода."""
+
     phone_number = serializers.CharField(max_length=12)
     sms_code = serializers.IntegerField(required=False)
 
     @staticmethod
     def validate_phone_number(value):
-        """ Метод валидации номера телефона """
+        """Метод валидации номера телефона."""
         pattern = r'\+7\d{10}$'
         if not re.match(pattern, value):
             raise serializers.ValidationError("Номер телефона должен начинаться с +7 и иметь 11 цифр")
@@ -22,14 +23,14 @@ class PhoneSmsSerializer(serializers.Serializer):
 
     @staticmethod
     def validate_sms_code(value):
-        """ Метод валидации смс кода """
+        """Метод валидации смс кода."""
         if len(str(value)) != 4:
             raise serializers.ValidationError("Код должен состоять из 4 цифр")
         return value
 
 
 class UserSerializer(serializers.ModelSerializer):
-    """ Сериализатор для модели Пользователь """
+    """Сериализатор для модели Пользователь."""
 
     class Meta:
         model = User
@@ -37,23 +38,24 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class ProfileSerializer(serializers.ModelSerializer):
-    """ Сериализатор для профиля Пользователя """
+    """Сериализатор для профиля Пользователя."""
 
     referrals = serializers.SerializerMethodField(read_only=True)  # список рефералов
 
     @staticmethod
     def get_referrals(instance):
-        """ Метод получения списка номеров телефонов рефералов """
+        """Метод получения списка номеров телефонов рефералов."""
         refs = User.objects.filter(inviter_referral_code=instance.my_referral_code).values_list(
             'phone_number', flat=True)
         return refs
 
     def validate(self, attrs):
-        """ Метод валидации поля inviter_referral_code """
+        """Метод валидации поля inviter_referral_code."""
         inviter_referral_code = attrs.get('inviter_referral_code')
 
         if inviter_referral_code is not None:
-            if self.instance.inviter_referral_code is not None:
+            if self.instance.inviter_referral_code is not None and \
+                    inviter_referral_code != self.instance.inviter_referral_code:
                 raise ValidationError('Реферальный код уже активирован')
             elif not User.objects.filter(my_referral_code=inviter_referral_code).exists():
                 raise ValidationError('Введенный вами код не существует')
@@ -69,7 +71,7 @@ class ProfileSerializer(serializers.ModelSerializer):
         return attrs
 
     def update(self, instance, validated_data):
-        """ Метод начисления реферальных баллов """
+        """Метод начисления реферальных баллов."""
         inviter_referral_code_before_update = instance.inviter_referral_code
         super().update(instance, validated_data)
         inviter_referral_code = validated_data.get('inviter_referral_code', None)
